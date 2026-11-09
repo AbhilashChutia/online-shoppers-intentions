@@ -119,3 +119,11 @@ While the container is running, execute the test script from your host terminal:
 python predict-test.py
 
 ```
+
+---
+
+## Visual Verification & Screenshots
+
+### Terminal Prediction Output - Cloud
+
+![Terminal Test Output](screenshots/terminal-cloud-test.png)
