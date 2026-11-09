@@ -42,7 +42,7 @@ Categorical identifier columns (`operatingsystems`, `browser`, `region`, `traffi
 ├── data/
 │   └── online_shoppers_intention.csv
 ├── screenshots/
-│   └── terminal-output.png
+│   └── terminal-cloud-test.png
 ├── .dockerignore
 ├── .gitignore
 ├── Dockerfile
