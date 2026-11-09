@@ -130,4 +130,5 @@ python predict-test.py
 
 ### Terminal Prediction Output - Cloud
 
+![Render Cloud Deployment](screenshots/render-cloud-deployment.png)
 ![Terminal Test Output](screenshots/terminal-cloud-test.png)
