@@ -41,15 +41,19 @@ Categorical identifier columns (`operatingsystems`, `browser`, `region`, `traffi
 ```text
 ├── data/
 │   └── online_shoppers_intention.csv
-├── notebook.ipynb
-├── train.py
-├── predict.py
-├── predict-test.py
-├── model.bin
-├── requirements.txt
-├── Dockerfile
+├── screenshots/
+│   └── terminal-output.png
 ├── .dockerignore
-└── README.md
+├── .gitignore
+├── Dockerfile
+├── README.md
+├── model.bin
+├── notebook.ipynb
+├── predict-cloud-test.py
+├── predict-test.py
+├── predict.py
+├── requirements.txt
+└── train.py
 
 ```
 
