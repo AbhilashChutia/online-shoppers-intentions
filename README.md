@@ -128,7 +128,10 @@ python predict-test.py
 
 ## Visual Verification & Screenshots
 
-### Terminal Prediction Output - Cloud
+### Render Cloud Deployment
 
 ![Render Cloud Deployment](screenshots/render-cloud-deployment.png)
+
+### Terminal Prediction Output - Cloud
+
 ![Terminal Test Output](screenshots/terminal-cloud-test.png)
