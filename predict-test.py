@@ -2,6 +2,8 @@ import requests
 
 url = "http://localhost:9696/predict"
 
+
+# high probability
 shopper = {
     "administrative": 3,
     "administrative_duration": 87.5,
@@ -22,14 +24,60 @@ shopper = {
     "weekend": 0,
 }
 
+# hesitant shopper
+# shopper = {
+#     "administrative": 1,
+#     "administrative_duration": 20.0,
+#     "informational": 0,
+#     "informational_duration": 0.0,
+#     "productrelated": 12,
+#     "productrelated_duration": 350.0,
+#     "bouncerates": 0.02,
+#     "exitrates": 0.04,
+#     "pagevalues": 6.5,
+#     "specialday": 0.0,
+#     "month": "May",
+#     "operatingsystems": "2",
+#     "browser": "2",
+#     "region": "3",
+#     "traffictype": "1",
+#     "visitortype": "Returning_Visitor",
+#     "weekend": 0,
+# }
+
+# low intent shopper
+# shopper = {
+#     "administrative": 0,
+#     "administrative_duration": 0.0,
+#     "informational": 0,
+#     "informational_duration": 0.0,
+#     "productrelated": 2,
+#     "productrelated_duration": 15.0,
+#     "bouncerates": 0.2,
+#     "exitrates": 0.2,
+#     "pagevalues": 0.0,
+#     "specialday": 0.0,
+#     "month": "Feb",
+#     "operatingsystems": "2",
+#     "browser": "2",
+#     "region": "3",
+#     "traffictype": "1",
+#     "visitortype": "Returning_Visitor",
+#     "weekend": 0,
+# }
+
 response = requests.post(url, json=shopper).json()
-print(response)
+print(f"    {response}")
 
 prob = response["purchase_probability"]
 
 if prob >= 0.5:
-    print("High intent shopper -> No discount needed, they are likely to buy anyway!")
+    print(
+        "    High intent shopper -> No discount needed, they are likely to buy anyway!"
+    )
 elif prob >= 0.25:
-    print("Hesitant shopper -> Sending 10% promotional discount to nudge them to buy!")
+    print(
+        "    Hesitant shopper -> Sending 10% promotional discount to nudge them to buy!"
+    )
 else:
-    print("Low intent window-shopper -> Do not send discount.")
+    print("    Low intent window-shopper -> Do not send discount.")
