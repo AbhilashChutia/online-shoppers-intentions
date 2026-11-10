@@ -1,38 +1,76 @@
 # Online Shoppers Purchasing Intention Prediction
 
-## Project Overview
+## Problem Description
 
-This project builds a machine learning pipeline and web service to predict whether an online browsing session will result in a transaction (`Revenue`). Accurately identifying high-intent shoppers in real time allows e-commerce platforms to optimize user experience and target retention strategies effectively.
+Most visitors to an e-commerce store browse products and leave without buying anything. For an online retailer, treating every visitor the same is inefficient: offering blanket discounts to everyone cuts into profit margins, while failing to engage hesitant shoppers leads to lost sales.
+
+The goal of this project is to predict in real time whether an active browsing session will end in a purchase (`Revenue`) based on session metrics and user metadata. The trained machine learning model is packaged into a REST API using Flask and Gunicorn, containerized with Docker, and deployed to the cloud on Render.
+
+### How the Solution is Used
+
+When a user is browsing the store, the backend sends their current session metrics to the `/predict` endpoint, which returns a purchase probability between `0.0` and `1.0`. The platform uses this probability to trigger automated marketing actions:
+
+- **High Intent (Probability >= 0.50):** The shopper is already likely to convert. Proceed with the standard checkout flow without offering a discount, preserving profit margins.
+- **Hesitant Shopper (0.25 <= Probability < 0.50):** The user shows interest but may abandon their cart. Trigger a targeted 10% promotional discount to nudge them toward completing the purchase.
+- **Window Shopper (Probability < 0.25):** Low likelihood of purchasing during this session. Do not send promotional discounts.
 
 ---
 
 ## Dataset
 
-The dataset used is the **Online Shoppers Purchasing Intention Dataset** from the UCI Machine Learning Repository, containing 12,330 user sessions across 18 features.
+This project uses the **Online Shoppers Purchasing Intention Dataset** from the UCI Machine Learning Repository. The dataset is included directly in this repository at `data/online_shoppers_intention.csv` for full reproducibility and contains **12,330 user sessions** across **18 features** collected over a one-year period.
 
-- **Numerical Features:** `administrative`, `administrative_duration`, `informational`, `informational_duration`, `productrelated`, `productrelated_duration`, `bouncerates`, `exitrates`, `pagevalues`, `specialday`
+- **Numerical Features:**
+    - `administrative`, `administrative_duration`: Number of account-management pages visited and total time spent on them.
+    - `informational`, `informational_duration`: Number of informational pages visited and total time spent on them.
+    - `productrelated`, `productrelated_duration`: Number of product pages visited and total time spent on them.
+    - `bouncerates`: Average bounce rate of the pages visited by the user.
+    - `exitrates`: Average exit rate of the pages visited by the user.
+    - `pagevalues`: Average value of the pages visited before completing an e-commerce transaction.
+    - `specialday`: Closeness of the visiting date to a specific special day (such as Mother's Day or Valentine's Day) on a scale from 0 to 1.
 
-- **Categorical Features:** `month`, `operatingsystems`, `browser`, `region`, `traffictype`, `visitortype`, `weekend`
+- **Categorical Features:**
+    - `month`: Month of the year in which the session occurred.
+    - `operatingsystems`, `browser`, `region`, `traffictype`: Anonymized integer IDs representing the user's OS, browser, geographic region, and traffic source.
+    - `visitortype`: Indicates whether the user is a `Returning_Visitor`, `New_Visitor`, or `Other`.
+    - `weekend`: Boolean indicator (`0` or `1`) showing whether the visit took place on a weekend.
 
-- **Target Variable:** `revenue` (binary: 0 for no purchase, 1 for purchase)
+- **Target Variable:**
+    - `revenue`: Binary target (`0` for no purchase, `1` for purchase). Approximately 15.5% of sessions resulted in a transaction, making this an imbalanced binary classification problem.
 
 ---
 
-## Model Development & Validation
+## Tech Stack & Libraries
 
-All exploratory data analysis, feature importance checks (correlation and mutual information), and model training are documented in `notebook.ipynb`.
+- **Language:** Python 3.10
+- **Data Manipulation & Analysis:** `pandas`, `numpy`
+- **Data Visualization (Notebook EDA):** `matplotlib`, `seaborn`, `jupyter`
+- **Machine Learning & Evaluation:** `scikit-learn` (`DictVectorizer`, `LogisticRegression`, `DecisionTreeClassifier`, `RandomForestClassifier`, `roc_auc_score`, `mutual_info_score`), `xgboost`
+- **Web Service & WSGI Server:** `flask`, `gunicorn`, `waitress`, `requests`
+- **Containerization & Cloud Hosting:** Docker, Render
 
-Categorical identifier columns (`operatingsystems`, `browser`, `region`, `traffictype`) were converted to strings prior to vectorization to ensure proper one-hot encoding via scikit-learn's `DictVectorizer`. The dataset was split into 60% training, 20% validation, and 20% test sets.
+---
 
-### Model Performance Summary
+## Exploratory Data Analysis & Model Development
 
-- **Logistic Regression:** Best Validation AUC = `0.9014` (`C=0.01`)
+All data cleaning, exploratory data analysis (EDA), feature importance analysis, and hyperparameter tuning experiments are documented in `notebook.ipynb`.
 
-- **Decision Tree Classifier:** Best Validation AUC = `0.9136` (`max_depth=6`, `min_samples_leaf=100`)
+### Key Findings from EDA
 
-- **Random Forest Classifier:** Best Validation AUC = `~0.928+` (`max_depth=10`, `min_samples_leaf=5`)
+1. **Data Preparation & Categorical Casting:** Column names were standardized to lowercase. Although `operatingsystems`, `browser`, `region`, and `traffictype` are stored as integers in the raw CSV, they represent discrete categories rather than continuous quantities. They were cast to strings (`str`) so that `DictVectorizer` properly applies one-hot encoding instead of treating them as ordinal numbers.
+2. **Class Imbalance:** Only 1,908 out of 12,330 sessions (`15.47%`) resulted in a purchase. Because of this class imbalance, **ROC AUC** was selected as the primary evaluation metric rather than raw accuracy.
+3. **Feature Importance:** Mutual information analysis and correlation checks showed that `pagevalues`, `exitrates`, `productrelated_duration`, and `productrelated` have the strongest relationship with whether a user completes a purchase.
 
-- **XGBoost Classifier (Selected Model):** Validation AUC = `0.9229`, Final Test ROC AUC = `0.9295` (`eta=0.1`, `max_depth=4`, `min_child_weight=1`)
+### Validation Strategy & Model Comparison
+
+The dataset was split into **60% training**, **20% validation**, and **20% test** sets using stratified sampling (`random_state=1`). Four model families were trained and tuned across multiple hyperparameters:
+
+- **Logistic Regression:** Tuned inverse regularization strength `C` across `[0.001, 0.01, 0.1, 1, 10, 100]`. Best validation ROC AUC: **`0.9014`** (`C=0.01`).
+- **Decision Tree Classifier:** Tuned `max_depth` and `min_samples_leaf` via grid search. Best validation ROC AUC: **`0.9136`** (`max_depth=6`, `min_samples_leaf=100`).
+- **Random Forest Classifier:** Tuned `n_estimators`, `max_depth`, and `min_samples_leaf`. Best validation ROC AUC: **`0.928+`** (`max_depth=10`, `min_samples_leaf=5`).
+- **XGBoost Classifier (Selected Final Model):** Tuned learning rate (`eta`), `max_depth`, and `min_child_weight`. XGBoost achieved a validation ROC AUC of **`0.9229`** and generalized best on the held-out test set with a **Final Test ROC AUC of `0.9295`** (`eta=0.1`, `max_depth=4`, `min_child_weight=1`).
+
+The standalone `train.py` script combines the training and validation partitions into a full training set, trains the final XGBoost model with these optimal parameters, and serializes both the `DictVectorizer` and model into `model.bin`.
 
 ---
 
@@ -42,6 +80,7 @@ Categorical identifier columns (`operatingsystems`, `browser`, `region`, `traffi
 ├── data/
 │   └── online_shoppers_intention.csv
 ├── screenshots/
+│   ├── render-cloud-deployment.png
 │   └── terminal-cloud-test.png
 ├── .dockerignore
 ├── .gitignore
@@ -54,81 +93,103 @@ Categorical identifier columns (`operatingsystems`, `browser`, `region`, `traffi
 ├── predict.py
 ├── requirements.txt
 └── train.py
-
 ```
 
 ---
 
 ## Local Execution Guide
 
-### 1. Set Up Virtual Environment
+### 1. Clone the Repository and Set Up Virtual Environment
 
 ```powershell
+git clone https://github.com/AbhilashChutia/online-shoppers-intentions.git
+cd online-shoppers-intentions
+
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
 ```
 
-### 2. Train the Model
+_(Note for Linux/macOS users: Activate the virtual environment using `source venv/bin/activate`)._
 
-Runs data preparation, trains the tuned XGBoost model on the full training set, and exports artifacts to `model.bin`:
+### 2. Running the Jupyter Notebook (For EDA & Experiments)
+
+To keep the production Docker image small, `requirements.txt` contains only the core packages required to train and serve the model. If you want to execute `notebook.ipynb` locally, install the plotting and notebook packages inside your activated virtual environment:
+
+```powershell
+pip install jupyter matplotlib seaborn
+jupyter notebook notebook.ipynb
+```
+
+### 3. Train the Model
+
+Runs data preparation, trains the tuned XGBoost model on the full training dataset, evaluates it on the test set, and saves the serialized vectorizer and model to `model.bin`:
 
 ```powershell
 python train.py
-
 ```
 
-### 3. Start the Web Service
+### 4. Start the Local Web Service
 
-Launches the Flask application on port `9696`:
+Starts the Flask prediction server locally on port `9696`:
 
 ```powershell
 python predict.py
-
 ```
 
-### 4. Test the Endpoint
+### 5. Test the Local Endpoint
 
-In a separate terminal with the virtual environment activated:
+With the service running, open a second terminal, activate the virtual environment, and run the local test script:
 
 ```powershell
 python predict-test.py
-
 ```
 
 ---
 
 ## Docker Containerization
 
+The application is fully containerized using `python:3.10-slim` and served via Gunicorn on port `9696`.
+
 ### 1. Build the Docker Image
 
 ```powershell
 docker build -t shopper-prediction .
-
 ```
 
-### 2. Run the Container
+### 2. Run the Docker Container
 
 ```powershell
 docker run -it --rm -p 9696:9696 shopper-prediction
-
 ```
 
-### 3. Test Containerized Service
+### 3. Test the Containerized Service
 
-While the container is running, execute the test script from your host terminal:
+While the container is running, execute the test script from another terminal on your host machine:
 
 ```powershell
 python predict-test.py
-
 ```
 
 ---
 
-## Visual Verification & Screenshots
+## Cloud Deployment & Visual Verification
 
-### Render Cloud Deployment
+The Docker container is deployed as a public web service on **Render**.
+
+- **Live Cloud Endpoint:** `[https://online-shoppers-intentions.onrender.com/predict](https://online-shoppers-intentions.onrender.com/predict)`
+
+_(Note: Because the service is hosted on Render's free tier, the container spins down after 15 minutes of inactivity. The initial request may take 45–60 seconds while the container wakes up; subsequent requests respond immediately)._
+
+### Testing the Live Cloud Service
+
+To send a test customer session to the live Render deployment and verify the HTTP status code, server headers, and JSON prediction, run:
+
+```powershell
+python predict-cloud-test.py
+```
+
+### Render Cloud Deployment Dashboard
 
 ![Render Cloud Deployment](screenshots/render-cloud-deployment.png)
 
