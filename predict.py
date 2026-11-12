@@ -16,6 +16,17 @@ app = Flask("shopper")
 def predict():
     shopper = request.get_json()
 
+    for col in ["month", "visitortype"]:
+        if col in shopper and isinstance(shopper[col], str):
+            shopper[col] = shopper[col].lower()
+
+    for col in ["operatingsystems", "browser", "region", "traffictype"]:
+        if col in shopper:
+            shopper[col] = str(shopper[col])
+
+    if "weekend" in shopper:
+        shopper["weekend"] = int(shopper["weekend"])
+
     X = dv.transform([shopper])
     features = list(dv.get_feature_names_out())
     dX = xgb.DMatrix(X, feature_names=features)

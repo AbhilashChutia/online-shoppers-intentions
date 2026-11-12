@@ -7,18 +7,22 @@ from sklearn.metrics import roc_auc_score
 
 xgb_params = {
     "eta": 0.1,
-    "max_depth": 4,
-    "min_child_weight": 1,
+    "max_depth": 6,
+    "min_child_weight": 5,
     "objective": "binary:logistic",
     "eval_metric": "auc",
-    "nthread": 8,
+    "nthread": 1,
     "seed": 1,
     "verbosity": 1,
 }
+num_boost_round = 30
 output_file = "model.bin"
 
 df = pd.read_csv("data/online_shoppers_intention.csv")
 df.columns = df.columns.str.lower()
+
+for col in ["month", "visitortype"]:
+    df[col] = df[col].str.lower()
 
 df["weekend"] = df["weekend"].astype(int)
 df["revenue"] = df["revenue"].astype(int)
